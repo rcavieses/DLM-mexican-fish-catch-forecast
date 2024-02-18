@@ -9,30 +9,57 @@ def filtrar_datos(df, producto, estado, oficina):
               (df['NOMBRE ESTADO'] == estado) &
               (df['NOMBRE OFICINA'] == oficina)].sort_values(by='YearMonth')
 
-def realizar_pronostico(model, data, scaler_X, scaler_Y, n_pasos):
-    pronosticos = []
-    current_data = data.copy()
-    for _ in range(n_pasos):
-        # Escalar los datos para el modelo
-        data_scaled = scaler_X.transform(current_data.reshape(1, -1)).reshape((1, -1, 1))
-        predicted_value_scaled = model.predict(data_scaled)
-        predicted_value = scaler_Y.inverse_transform(predicted_value_scaled).flatten()[0]
-        
-        # Añadir el valor pronosticado a los datos actuales para futuras predicciones
-        current_data = np.roll(current_data, -1)
-        current_data[-1] = predicted_value
-        
-        # Guardar el pronóstico
-        pronosticos.append(predicted_value)
-    return np.array(pronosticos)
 
-def graficar_pronostico(serie_historica, pronosticos, producto, oficina, estado, inicio_fechas_futuras, n_pasos):
+# Function to prepare last 12 timesteps data
+def prepare_last_data(df, categorical_columns, numeric_columns, time_steps, encoder, scaler_x):
+    # Apply one-hot encoding and scaling to the last 'time_steps' records
+    encoded_data = encoder.transform(df[categorical_columns][-time_steps:])
+    encoded_df = pd.DataFrame(encoded_data, columns=encoder.get_feature_names_out())
+
+    scaled_data = scaler_x.transform(df[numeric_columns][-time_steps:])
+    scaled_df = pd.DataFrame(scaled_data, columns=numeric_columns)
+
+    prepared_data = pd.concat([encoded_df, scaled_df], axis=1).to_numpy()
+    prepared_data = prepared_data.reshape(1, time_steps, -1)  # Reshape for LSTM input
+    return prepared_data
+
+# Function to make forecast using the model
+def realizar_pronostico(model, prepared_data, scaler_y, n_forecast):
+    forecasts_scaled = []
+    current_data = prepared_data
+    for _ in range(n_forecast):
+        predicted_value_scaled = model.predict(current_data)
+        forecasts_scaled.append(predicted_value_scaled.flatten())
+        
+        # Update current_data with the new prediction for the next step
+        current_data = np.roll(current_data, -1, axis=1)
+        current_data[:, -1, :] = predicted_value_scaled
+        
+    # Inverse transform to get original scale
+    pronosticos = scaler_y.inverse_transform(np.array(forecasts_scaled).reshape(-1, 1))
+    return pronosticos.flatten()
+
+def graficar_pronostico(serie_historica, pronosticos, producto, oficina, estado, inicio_fechas_futuras, n_forecast):
+    """
+    Plots historical series and forecasts for a specified product and location.
+
+    :param serie_historica: Series, historical data to be plotted.
+    :param pronosticos: Array-like, forecasted values to be plotted.
+    :param producto: String, name of the product being forecasted.
+    :param oficina: String, name of the office related to the forecast.
+    :param estado: String, name of the state related to the forecast.
+    :param inicio_fechas_futuras: Datetime, the start date for the forecasted data.
+    :param n_forecast: Integer, number of steps (months) to forecast.
+
+    :return: Plotly graph object showing the historical data and the forecasts.
+    """
+ 
     # Asegurarse de que las fechas históricas estén en formato correcto
     fechas_historicas = pd.date_range(start=serie_historica.index.min(), periods=len(serie_historica), freq='M')
     
     # Corregir: Asegura que las fechas de pronóstico inician correctamente después del último mes de datos históricos
     # Generar fechas futuras comenzando después del último registro de la serie histórica
-    fechas_futuras = pd.date_range(start=inicio_fechas_futuras, periods=n_pasos, freq='M')
+    fechas_futuras = pd.date_range(start=inicio_fechas_futuras, periods=n_forecast, freq='M')
 
     fig = go.Figure()
     # Añade los datos históricos
@@ -41,33 +68,10 @@ def graficar_pronostico(serie_historica, pronosticos, producto, oficina, estado,
     fig.add_trace(go.Scatter(x=fechas_futuras, y=pronosticos, mode='lines+markers', name='Pronóstico'))
     
     # Configura el resto del gráfico
-    fig.update_layout(title=f'Pronóstico de {n_pasos} meses para {producto} en {oficina}, {estado}',
+    fig.update_layout(title=f'Pronóstico de {n_forecast} meses para {producto} en {oficina}, {estado}',
                       xaxis_title='Fecha', yaxis_title='Peso Desembarcado (Kilogramos)',
                       xaxis_rangeslider_visible=True)
     fig.show()
 
 
-def pronosticar_y_graficar(df, producto, estado, oficina, n_pasos, model_path, scaler_X_path, scaler_Y_path):
-    # Filtrar datos
-    filtered_df = filtrar_datos(df, producto, estado, oficina)
-    last_n_months = filtered_df[-12:]['PESO DESEMBARCADO_KILOGRAMOS'].values  # Asumiendo que n_past=12
-    
-    # Configurar la serie histórica con 'YearMonth' como índice
-    # Asegurarse de que 'YearMonth' esté en el formato correcto y establecido como índice.
-    serie_historica = filtered_df.set_index('YearMonth')['PESO DESEMBARCADO_KILOGRAMOS']
-
-    # Cargar el modelo y los escaladores
-    model = load_trained_model(model_path)
-    scaler_X, scaler_Y = load_scalers(scaler_X_path, scaler_Y_path)
-    
-    # Realizar pronóstico
-    pronosticos = realizar_pronostico(model, last_n_months, scaler_X, scaler_Y, n_pasos)
-    
-    # Ajustar la fecha de inicio para las predicciones para asegurar la continuidad
-    ultimo_mes = filtered_df['YearMonth'].max()
-    # Asegurar que la fecha de inicio de las predicciones sea el mes siguiente al último mes de la serie histórica.
-    inicio_fechas_futuras = ultimo_mes + pd.DateOffset(months=-1)
-    
-    # Graficar resultados
-    graficar_pronostico(serie_historica, pronosticos, producto, oficina, estado, inicio_fechas_futuras, n_pasos)
 
