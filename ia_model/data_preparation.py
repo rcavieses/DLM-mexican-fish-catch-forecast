@@ -15,7 +15,7 @@ def load_data(file_path):
     df = df.sort_values(by=['NOMBRE PRINCIPAL', 'NOMBRE ESTADO', 'NOMBRE OFICINA', 'YearMonth'])
     return df
 
-def prepare_data(df, feature_cols, target_col, time_steps, categorical_columns, numeric_columns):
+def prepare_data(df, target_col, time_steps, categorical_columns, numeric_columns):
     """
     Prepares data for LSTM model by encoding categorical data and scaling numerical data.
 

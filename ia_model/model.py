@@ -33,21 +33,20 @@ def build_dynamic_model(time_steps, n_features, layer_types, neurons_per_layer, 
         ValueError: If 'layer_types' and 'neurons_per_layer' have different lengths.
     """
 
-    if len(layer_types) != len(neurons_per_layer):
-        raise ValueError("layer_types and neurons_per_layer must have the same length")
     model = Sequential()
     for i, (layer_type, neurons) in enumerate(zip(layer_types, neurons_per_layer)):
-        if i == 0:  # Primera capa, necesita definir input_shape
+        if i == 0:  # Primera capa
             if layer_type == 'LSTM':
-                model.add(LSTM(neurons, activation='relu', input_shape=(time_steps, n_features), return_sequences=True if i < len(layer_types) - 1 else False))
+                model.add(LSTM(neurons, activation='relu', input_shape=(time_steps, n_features), return_sequences=True if len(layer_types) > 1 and layer_types[1] == 'LSTM' else False))
             elif layer_type == 'Dense':
-                model.add(Dense(neurons, activation='relu', input_shape=(time_steps, n_features)))
+                model.add(Dense(neurons, activation='relu', input_shape=(time_steps * n_features,)))
         else:  # Capas subsiguientes
             if layer_type == 'LSTM':
                 model.add(LSTM(neurons, activation='relu', return_sequences=True if i < len(layer_types) - 1 else False))
             elif layer_type == 'Dense':
-                model.add(Dense(neurons, activation='relu'))
-
+                # No necesitamos especificar input_shape para capas Dense adicionales.
+                model.add(Dense(neurons, activation='linear'))
+        
         # Añadir Dropout después de cada capa si no es la última capa
         if i < len(layer_types) - 1:
             model.add(Dropout(dropout))
