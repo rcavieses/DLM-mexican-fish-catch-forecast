@@ -17,7 +17,7 @@ import joblib
 def main():
     # Load and prepare data
     df = load_data(str(cfg.FILE_PATH))
-    X, y, n_features, scaler_x,scaler_y, encoder = prepare_data(df, cfg.FEATURE_COL, cfg.TARGET_COL, cfg.time_steps,cfg.CATEGORICAL_COL,cfg.NUMERIC_COL)
+    X, y, n_features, scaler_x,scaler_y, encoder, n_features = prepare_data(df, cfg.TARGET_COL, cfg.time_steps,cfg.CATEGORICAL_COL,cfg.NUMERIC_COL)
     X_train, X_test, y_train, y_test = split_data(X, y)
     print('done')
 
