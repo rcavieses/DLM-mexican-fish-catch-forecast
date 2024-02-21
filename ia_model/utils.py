@@ -8,7 +8,8 @@ def ia_plot_history(history):
     plt.legend()
     plt.show()
 
-def load_scalers(scaler_X_path, scaler_Y_path):
+def load_scalers(scaler_X_path, scaler_Y_path, encoder_path):
     scaler_X = joblib.load(scaler_X_path)
     scaler_Y = joblib.load(scaler_Y_path)
-    return scaler_X, scaler_Y
+    encoder = joblib.load(encoder_path)
+    return scaler_X, scaler_Y, encoder
