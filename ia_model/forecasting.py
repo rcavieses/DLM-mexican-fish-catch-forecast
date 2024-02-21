@@ -29,49 +29,43 @@ def realizar_pronostico(model, prepared_data, scaler_y, n_forecast):
     current_data = prepared_data
     for _ in range(n_forecast):
         predicted_value_scaled = model.predict(current_data)
-        forecasts_scaled.append(predicted_value_scaled.flatten())
-        
-        # Update current_data with the new prediction for the next step
+        # Tomamos el primer paso de tiempo de la secuencia pronosticada
+        forecasts_scaled.append(predicted_value_scaled[:, 0, :].flatten())
+
+        # Actualizamos current_data con la nueva predicción para el siguiente paso
         current_data = np.roll(current_data, -1, axis=1)
-        current_data[:, -1, :] = predicted_value_scaled
-        
-    # Inverse transform to get original scale
+        current_data[:, -1, :] = predicted_value_scaled[:, 0, :].flatten()  # Asegúrate de adaptar la forma correctamente
+
+    # Transformación inversa para obtener la escala original
     pronosticos = scaler_y.inverse_transform(np.array(forecasts_scaled).reshape(-1, 1))
     return pronosticos.flatten()
 
-def graficar_pronostico(serie_historica, pronosticos, producto, oficina, estado, inicio_fechas_futuras, n_forecast):
-    """
-    Plots historical series and forecasts for a specified product and location.
+import pandas as pd
+import plotly.graph_objects as go
 
-    :param serie_historica: Series, historical data to be plotted.
-    :param pronosticos: Array-like, forecasted values to be plotted.
-    :param producto: String, name of the product being forecasted.
-    :param oficina: String, name of the office related to the forecast.
-    :param estado: String, name of the state related to the forecast.
-    :param inicio_fechas_futuras: Datetime, the start date for the forecasted data.
-    :param n_forecast: Integer, number of steps (months) to forecast.
-
-    :return: Plotly graph object showing the historical data and the forecasts.
-    """
- 
-    # Asegurarse de que las fechas históricas estén en formato correcto
-    fechas_historicas = pd.date_range(start=serie_historica.index.min(), periods=len(serie_historica), freq='M')
+def graficar_pronostico(serie_historica, pronosticos, producto, oficina, estado, n_forecast):
+    # Extraer el último valor real de la serie histórica
+    ultimo_dato_real = serie_historica['PESO DESEMBARCADO_KILOGRAMOS'].iloc[-1]
     
-    # Corregir: Asegura que las fechas de pronóstico inician correctamente después del último mes de datos históricos
-    # Generar fechas futuras comenzando después del último registro de la serie histórica
-    fechas_futuras = pd.date_range(start=inicio_fechas_futuras, periods=n_forecast, freq='M')
+    # Añadir el último dato real al inicio de la serie de pronósticos
+    pronosticos_con_real = np.insert(pronosticos, 0, ultimo_dato_real)
 
+    # Fechas para la serie histórica y las predicciones
+    fechas_historicas = pd.to_datetime(serie_historica['YearMonth'], format='%Y%m')
+    inicio_fechas_futuras = fechas_historicas.iloc[-1] + pd.DateOffset(months=-1)
+    fechas_futuras = pd.date_range(start=inicio_fechas_futuras, periods=n_forecast + 1, freq='M')  # +1 para incluir el último dato real
+
+    # Crear la figura y añadir las series de datos
     fig = go.Figure()
-    # Añade los datos históricos
-    fig.add_trace(go.Scatter(x=fechas_historicas, y=serie_historica, mode='lines+markers', name='Datos históricos'))
-    # Añade los datos de pronóstico
-    fig.add_trace(go.Scatter(x=fechas_futuras, y=pronosticos, mode='lines+markers', name='Pronóstico'))
-    
-    # Configura el resto del gráfico
+    fig.add_trace(go.Scatter(x=fechas_historicas, y=serie_historica['PESO DESEMBARCADO_KILOGRAMOS'], mode='lines+markers', name='Datos históricos'))
+    fig.add_trace(go.Scatter(x=fechas_futuras, y=pronosticos_con_real, mode='lines+markers', name='Pronóstico'))
+
+    # Configurar y mostrar el gráfico
     fig.update_layout(title=f'Pronóstico de {n_forecast} meses para {producto} en {oficina}, {estado}',
                       xaxis_title='Fecha', yaxis_title='Peso Desembarcado (Kilogramos)',
                       xaxis_rangeslider_visible=True)
     fig.show()
+
 
 
 
