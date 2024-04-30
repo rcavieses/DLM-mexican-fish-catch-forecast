@@ -13,6 +13,10 @@ BATCH_SIZE = 30
 MODEL_PATH = 'mi_modelo.h5'
 SCALER_X_PATH = 'scaler_X.pkl'
 SCALER_Y_PATH = 'scaler_Y.pkl'
+<<<<<<< HEAD
+ENCODER_PATH = 'encoder_filename.pkl'
+=======
 ENCODER = 'encoder_filename.pkl'
+>>>>>>> a8de755a951dd1af21b8aabac3c577ccab72235f
 
 
