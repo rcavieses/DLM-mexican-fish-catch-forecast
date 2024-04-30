@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"name": "DLM-mexican-fish-catch-forecast",
+			"path": "."
+		}
+	],
+	"settings": {
+		"remote.SSH.defaultForwardedPorts": []
+	}
+}
