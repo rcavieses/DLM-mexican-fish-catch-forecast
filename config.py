@@ -1,5 +1,5 @@
 # Configuration parameters for the model and data preparation
-FILE_PATH = 'aggregated_data3.csv' #This data can be download from https://rcavieses.pythonanywhere.com/
+FILE_PATH = 'aggregated_data4.csv' #This data can be download from https://rcavieses.pythonanywhere.com/
 FEATURE_COL = ['NOMBRE PRINCIPAL','NOMBRE ESTADO','NOMBRE OFICINA','SST','PESO DESEMBARCADO_KILOGRAMOS']#Change this if you want to add input variables
 TARGET_COL = 'PESO DESEMBARCADO_KILOGRAMOS'
 CATEGORICAL_COL = ['NOMBRE PRINCIPAL','NOMBRE ESTADO','NOMBRE OFICINA']
@@ -13,5 +13,6 @@ BATCH_SIZE = 30
 MODEL_PATH = 'mi_modelo.h5'
 SCALER_X_PATH = 'scaler_X.pkl'
 SCALER_Y_PATH = 'scaler_Y.pkl'
+ENCODER_PATH = 'encoder_filename.pkl'
 
 
