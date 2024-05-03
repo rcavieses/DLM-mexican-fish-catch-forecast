@@ -6,6 +6,9 @@ from itertools import product
 import numpy as np
 import pandas as pd
 import optuna
+from tensorflow.keras.callbacks import EarlyStopping, TensorBoard
+import os
+import datetime
 
 # Same activation function for all layers except the last one( Dense - linear)
 def grid_evaluate_combinations(X_train, y_train, X_test, y_test, time_steps, n_features, neurons_list, layers_list, activations_list, epochs=50, batch_size=32):
@@ -31,7 +34,7 @@ def grid_evaluate_combinations(X_train, y_train, X_test, y_test, time_steps, n_f
                 model.compile(optimizer='adamax', loss='mean_squared_error')
 
                 # Early stopping to avoid overfitting
-                early_stop = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, mode='min', verbose=0, restore_best_weights=True)
+                early_stop = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=100, mode='min', verbose=0, restore_best_weights=True)
                 model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2, callbacks=[early_stop], verbose=0)
 
                 predictions = model.predict(X_test,verbose=0)
@@ -84,7 +87,7 @@ def objective(trial, X_train, y_train, X_test, y_test, time_steps, n_features, c
 
 
 # Build model
-def build_best_model(X_train,y_train,X_test,y_test,time_steps, n_features, best_configuration, epochs=50, batch_size=32):
+def build_best_model(X_train, y_train, X_test, y_test, time_steps, n_features, best_configuration, epochs=50, batch_size=32):
     
     layer_count = best_configuration['layers']
     neurons = best_configuration['neurons']
@@ -100,9 +103,13 @@ def build_best_model(X_train,y_train,X_test,y_test,time_steps, n_features, best_
     model.add(Dense(1, activation='linear'))
     model.compile(optimizer='adamax', loss='mean_squared_error')
 
+    # Prepare TensorBoard logging
+    log_dir = os.path.join("logs", "fit", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+
     # EarlyStopping to avoid overfitting
     early_stop = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, mode='min', verbose=1, restore_best_weights=True)
-    history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2, callbacks=[early_stop], verbose=1)
+    history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2, callbacks=[early_stop, tensorboard_callback], verbose=1)
 
     # Evaluate model on test data
     predictions = model.predict(X_test)
